@@ -1,78 +1,292 @@
-# Streamify
+# Streamify — Real-Time Music Data Engineering Pipeline
 
-A data pipeline with Kafka, Spark Streaming, dbt, Docker, Airflow, Terraform, GCP and much more!
+Streamify is a data engineering project that simulates a music-streaming platform and processes user activity through a real-time data pipeline.
 
-## Description
+The project combines **Apache Kafka, Spark Structured Streaming, PostgreSQL, dbt, Airflow, Docker, and Terraform**, with an original cloud-oriented architecture using **Google Cloud Storage and BigQuery**.
 
-### Objective
+> **Current local validation:** EventSim → Kafka → Spark Structured Streaming → Parquet → PostgreSQL → dbt has been successfully executed and verified locally.
 
-The project will stream events generated from a fake music streaming service (like Spotify) and create a data pipeline that consumes the real-time data. The data coming in would be similar to an event of a user listening to a song, navigating on the website, authenticating. The data would be processed in real-time and stored to the data lake periodically (every two minutes). The hourly batch job will then consume this data, apply transformations, and create the desired tables for our dashboard to generate analytics. We will try to analyze metrics like popular songs, active users, user demographics etc.
+## Architecture
 
-### Dataset
+### Verified Local Pipeline
 
-[Eventsim](https://github.com/Interana/eventsim) is a program that generates event data to replicate page requests for a fake music web site. The results look like real use data, but are totally fake. The docker image is borrowed from [viirya's fork](https://github.com/viirya/eventsim) of it, as the original project has gone without maintenance for a few years now.
+```text
+EventSim
+   ↓
+Kafka
+   ↓
+Spark Structured Streaming
+   ↓
+Partitioned Parquet
+   ↓
+PostgreSQL
+   ↓
+dbt
+   ↓
+Analytical Data Models
+```
 
-Eventsim uses song data from [Million Songs Dataset](http://millionsongdataset.com) to generate events. I have used a [subset](http://millionsongdataset.com/pages/getting-dataset/#subset) of 10000 songs.
+### Original Cloud Architecture
 
-### Tools & Technologies
+```text
+EventSim
+   ↓
+Kafka
+   ↓
+Spark Streaming
+   ↓
+Google Cloud Storage
+   ↓
+Airflow
+   ↓
+BigQuery
+   ↓
+dbt
+   ↓
+Analytics Dashboard
+```
 
-- Cloud - [**Google Cloud Platform**](https://cloud.google.com)
-- Infrastructure as Code software - [**Terraform**](https://www.terraform.io)
-- Containerization - [**Docker**](https://www.docker.com), [**Docker Compose**](https://docs.docker.com/compose/)
-- Stream Processing - [**Kafka**](https://kafka.apache.org), [**Spark Streaming**](https://spark.apache.org/docs/latest/streaming-programming-guide.html)
-- Orchestration - [**Airflow**](https://airflow.apache.org)
-- Transformation - [**dbt**](https://www.getdbt.com)
-- Data Lake - [**Google Cloud Storage**](https://cloud.google.com/storage)
-- Data Warehouse - [**BigQuery**](https://cloud.google.com/bigquery)
-- Data Visualization - [**Data Studio**](https://datastudio.google.com/overview)
-- Language - [**Python**](https://www.python.org)
+![Streamify Architecture](images/Streamify-Architecture.jpg)
 
-### Architecture
+## Project Objective
 
-![streamify-architecture](images/Streamify-Architecture.jpg)
+Streamify simulates activity from a fictional music-streaming platform.
 
-### Final Result
+The pipeline processes:
 
-![dashboard](images/dashboard.png)
-## Setup
+- Song listening events
+- Page-view events
+- Authentication events
 
-**WARNING: You will be charged for all the infra setup. You can avail 300$ in credit by creating a new account on GCP.**
-### Pre-requisites
+The goal is to demonstrate an end-to-end data engineering workflow for ingesting, processing, storing, transforming, and analyzing streaming data.
 
-If you already have a Google Cloud account and a working terraform setup, you can skip the pre-requisite steps.
+## Technology Stack
 
-- Google Cloud Platform. 
-  - [GCP Account and Access Setup](setup/gcp.md)
-  - [gcloud alternate installation method - Windows](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/week_1_basics_n_setup/1_terraform_gcp/windows.md#google-cloud-sdk)
-- Terraform
-  - [Setup Terraform](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/week_1_basics_n_setup/1_terraform_gcp/windows.md#terraform)
+| Layer | Technology |
+|---|---|
+| Event Generation | EventSim |
+| Message Streaming | Apache Kafka |
+| Stream Processing | Apache Spark Structured Streaming |
+| Data Lake Format | Apache Parquet |
+| Local Database | PostgreSQL |
+| Transformation | dbt |
+| Orchestration | Apache Airflow |
+| Containerization | Docker / Docker Compose |
+| Infrastructure as Code | Terraform |
+| Cloud Platform | Google Cloud Platform |
+| Programming Language | Python |
 
+## Data Pipeline
 
-### Get Going!
+### 1. Event Generation
 
-A video walkthrough of how I run my project - [YouTube Video](https://youtu.be/vzoYhI8KTlY)
+EventSim generates synthetic music-streaming activity.
 
-- Procure infra on GCP with Terraform - [Setup](setup/terraform.md)
-- (Extra) SSH into your VMs, Forward Ports - [Setup](setup/ssh.md)
-- Setup Kafka Compute Instance and start sending messages from Eventsim - [Setup](setup/kafka.md)
-- Setup Spark Cluster for stream processing - [Setup](setup/spark.md)
-- Setup Airflow on Compute Instance to trigger the hourly data pipeline - [Setup](setup/airflow.md)
+### 2. Kafka
 
+Events are published to:
 
-### Debug
+```text
+listen_events
+page_view_events
+auth_events
+```
 
-If you run into issues, see if you find something in this debug [guide](setup/debug.md).
-### How can I make this better?!
-A lot can still be done :).
-- Choose managed Infra
-  - Cloud Composer for Airflow
-  - Confluent Cloud for Kafka
-- Create your own VPC network
-- Build dimensions and facts incrementally instead of full refresh
-- Write data quality tests
-- Create dimensional models for additional business processes
-- Include CI/CD
-- Add more visualizations
+### 3. Spark Structured Streaming
 
-### Special Mentions
-I'd like to thank the [DataTalks.Club](https://datatalks.club) for offering this Data Engineering course for completely free. All the things I learnt there, enabled me to come up with this project. If you want to upskill on Data Engineering technologies, please check out the [course](https://github.com/DataTalksClub/data-engineering-zoomcamp). :)
+Spark consumes Kafka messages, parses the event schemas, converts timestamps, derives time attributes, and writes processed events as partitioned Parquet files.
+
+The local output structure is:
+
+```text
+<event>/
+└── month=<M>/
+    └── day=<D>/
+        └── hour=<H>/
+```
+
+The local streaming job uses a 120-second processing trigger.
+
+### 4. PostgreSQL
+
+The processed Parquet datasets are loaded into PostgreSQL source tables:
+
+```text
+listen_events
+page_view_events
+```
+
+### 5. dbt
+
+dbt transforms the source data into an analytical dimensional model:
+
+```text
+dim_users
+dim_songs
+dim_artists
+dim_location
+dim_datetime
+fact_streams
+wide_streams
+```
+
+## Local Validation
+
+The local pipeline has been successfully executed through:
+
+```text
+EventSim
+   ↓
+Kafka
+   ↓
+Spark Structured Streaming
+   ↓
+Parquet
+   ↓
+PostgreSQL
+   ↓
+dbt
+```
+
+During validation, the streaming layer generated:
+
+```text
+listen_events     → 248 records
+page_view_events  → 301 records
+auth_events       → 7 records
+```
+
+The `listen_events` and `page_view_events` datasets were loaded into PostgreSQL, followed by a successful dbt run:
+
+```text
+PASS = 7
+ERROR = 0
+```
+
+These are development validation figures, not production-scale metrics.
+
+## Data Model
+
+### Fact Table
+
+`fact_streams`
+
+Contains stream-level analytical records linked to the dimension tables.
+
+### Dimension Tables
+
+| Model | Purpose |
+|---|---|
+| `dim_users` | User attributes |
+| `dim_songs` | Song metadata |
+| `dim_artists` | Artist metadata |
+| `dim_location` | Geographic information |
+| `dim_datetime` | Date and time attributes |
+
+### Analytical View
+
+`wide_streams` combines the fact table with the dimension tables to provide a dashboard-friendly analytical dataset.
+
+## Repository Structure
+
+```text
+streamify/
+├── airflow/                  # Airflow DAGs
+├── dbt/                      # dbt project and models
+├── eventsim/                 # Synthetic event generator
+├── kafka/                    # Kafka configuration
+├── spark_streaming/          # Spark streaming jobs
+├── terraform/                # Infrastructure as Code
+├── scripts/                  # Helper scripts
+├── setup/                    # Setup documentation
+├── images/                   # Project images
+├── load_listen_to_postgres.py
+├── load_page_to_postgres.py
+├── requirements.txt
+└── README.md
+```
+
+Generated runtime data, checkpoints, credentials, virtual environments, logs, and dbt build artifacts are excluded from version control.
+
+## Local Setup
+
+The local development environment uses:
+
+- WSL2 / Linux
+- Python
+- Docker
+- Apache Kafka
+- PostgreSQL
+- PySpark
+- dbt
+
+The repository also contains documentation and infrastructure definitions for the original GCP-based deployment.
+
+## dbt Configuration
+
+Local database credentials are intentionally excluded from Git.
+
+Create:
+
+```text
+dbt/profiles.yml
+```
+
+using:
+
+```text
+dbt/profiles.yml.example
+```
+
+and provide your own PostgreSQL connection details.
+
+## Dashboard
+
+The repository contains the original dashboard reference:
+
+![Dashboard](images/dashboard.png)
+
+A standalone deployable dashboard application is planned for the professional version.
+
+## Engineering Challenges Identified
+
+During local validation, two data-model edge cases were identified:
+
+1. Some `fact_streams` records do not have a matching `dim_songs` record.
+2. `dim_artists.artistKey` is not unique for all source records, which can multiply rows when building `wide_streams`.
+
+These are documented as part of the improvement phase.
+
+## Planned Improvements
+
+- Incremental data processing
+- Data quality tests
+- Improved dimensional modeling
+- Automated PostgreSQL loading
+- Airflow orchestration
+- Production-ready dashboard
+- Cloud deployment
+- CI/CD
+- Monitoring and observability
+- Improved documentation
+
+## Data Engineering Concepts Demonstrated
+
+- Event-driven data ingestion
+- Kafka streaming
+- Spark Structured Streaming
+- Partitioned Parquet data lakes
+- Batch data loading
+- PostgreSQL
+- Dimensional modeling
+- Fact and dimension tables
+- dbt transformations
+- Airflow orchestration
+- Docker
+- Infrastructure as Code with Terraform
+
+## Acknowledgements
+
+This project was developed while learning from the DataTalks.Club Data Engineering curriculum and related open-source resources.
+
+EventSim is used to generate synthetic music-streaming activity.
