@@ -5,7 +5,107 @@ sources:
     schema: public
     tables:
       - name: listen_events
+        columns:
+          - name: ts
+            tests:
+              - not_null
+
       - name: page_view_events
+        columns:
+          - name: ts
+            tests:
+              - not_null
+
       - name: auth_events
+
       - name: songs
+        columns:
+          - name: song_id
+            tests:
+              - not_null
+              - unique
+
       - name: state_codes
+
+models:
+  - name: dim_users
+    columns:
+      - name: userKey
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_songs
+    columns:
+      - name: songKey
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_artists
+    columns:
+      - name: artistKey
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_location
+    columns:
+      - name: locationKey
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_datetime
+    columns:
+      - name: dateKey
+        tests:
+          - not_null
+          - unique
+
+  - name: fact_streams
+    columns:
+      - name: userKey
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_users')
+                field: userKey
+
+      - name: artistKey
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_artists')
+                field: artistKey
+
+      - name: songKey
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_songs')
+                field: songKey
+
+      - name: locationKey
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_location')
+                field: locationKey
+
+      - name: dateKey
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_datetime')
+                field: dateKey
+
+      - name: ts
+        tests:
+          - not_null
+
+  - name: wide_streams
+    columns:
+      - name: timestamp
+        tests:
+          - not_null
