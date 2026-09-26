@@ -40,13 +40,13 @@ SELECT
     dim_artists.name AS artistName
 FROM
     {{ ref('fact_streams') }}
-JOIN
+LEFT JOIN
     {{ ref('dim_users') }} ON fact_streams.userKey = dim_users.userKey
-JOIN
+LEFT JOIN
     {{ ref('dim_songs') }} ON fact_streams.songKey = dim_songs.songKey
-JOIN
+LEFT JOIN
     {{ ref('dim_location') }} ON fact_streams.locationKey = dim_location.locationKey
-JOIN
+LEFT JOIN
     {{ ref('dim_datetime') }} ON fact_streams.dateKey = dim_datetime.dateKey
-JOIN
+LEFT JOIN
     {{ ref('dim_artists') }} ON fact_streams.artistKey = dim_artists.artistKey
