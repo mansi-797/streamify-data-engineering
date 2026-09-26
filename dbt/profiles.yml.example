@@ -1,0 +1,12 @@
+streamify:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5433
+      user: <YOUR_POSTGRES_USER>
+      password: <YOUR_POSTGRES_PASSWORD>
+      dbname: streamify
+      schema: public
+      threads: 4

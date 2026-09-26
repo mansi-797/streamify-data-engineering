@@ -1,0 +1,59 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment / secrets
+.env
+*.env
+!.env.example
+google_credentials.json
+credentials/
+.gcp/
+*.key
+*.pem
+
+# Generated data
+streamify_data/
+local_test_parquet/
+test_parquet/
+
+# Spark
+_spark_metadata/
+checkpoint/
+
+# Logs
+logs/
+*.log
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
+
+# Airflow
+airflow/logs/
+airflow/plugins/
+airflow/.env
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+
+# Build artifacts
+eventsim/target/
+*.jar
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local dbt connection profile
+dbt/profiles.yml
+!dbt/profiles.yml.example
