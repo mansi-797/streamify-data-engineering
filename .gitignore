@@ -60,3 +60,4 @@ dbt/profiles.yml
 
 # Local cloud dbt environment
 .venv-cloud/
+.venv-dashboard/
