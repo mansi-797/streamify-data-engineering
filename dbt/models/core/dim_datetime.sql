@@ -1,23 +1,26 @@
 {{ config(materialized = 'table') }}
 
 WITH date_series AS (
-    SELECT generate_series(
-        TIMESTAMP '2018-10-01 00:00:00',
-        TIMESTAMP '2027-01-01 00:00:00',
-        INTERVAL '1 hour'
+    SELECT date
+    FROM UNNEST(
+        GENERATE_TIMESTAMP_ARRAY(
+            TIMESTAMP('2018-10-01 00:00:00+00'),
+            TIMESTAMP('2027-01-01 00:00:00+00'),
+            INTERVAL 1 HOUR
+        )
     ) AS date
 )
 
 SELECT
-    EXTRACT(EPOCH FROM date)::BIGINT AS dateKey,
+    UNIX_SECONDS(date) AS dateKey,
     date,
-    EXTRACT(ISODOW FROM date)::INTEGER AS dayOfWeek,
-    EXTRACT(DAY FROM date)::INTEGER AS dayOfMonth,
-    EXTRACT(WEEK FROM date)::INTEGER AS weekOfYear,
-    EXTRACT(MONTH FROM date)::INTEGER AS month,
-    EXTRACT(YEAR FROM date)::INTEGER AS year,
+    MOD(EXTRACT(DAYOFWEEK FROM date) + 5, 7) + 1 AS dayOfWeek,
+    EXTRACT(DAY FROM date) AS dayOfMonth,
+    EXTRACT(ISOWEEK FROM date) AS weekOfYear,
+    EXTRACT(MONTH FROM date) AS month,
+    EXTRACT(YEAR FROM date) AS year,
     CASE
-        WHEN EXTRACT(ISODOW FROM date) IN (6, 7) THEN TRUE
+        WHEN EXTRACT(DAYOFWEEK FROM date) IN (1, 7) THEN TRUE
         ELSE FALSE
     END AS weekendFlag
 FROM date_series

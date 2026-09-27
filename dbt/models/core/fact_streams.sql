@@ -23,4 +23,4 @@ LEFT JOIN {{ ref('dim_location') }}
     AND listen_events.lat = dim_location.latitude
     AND listen_events.lon = dim_location.longitude
 LEFT JOIN {{ ref('dim_datetime') }}
-    ON dim_datetime.date = date_trunc('hour', listen_events.ts)
+    ON dim_datetime.date = TIMESTAMP_TRUNC(listen_events.ts, HOUR)
