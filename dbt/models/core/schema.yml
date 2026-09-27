@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: staging
-    schema: "{{ target.schema }}"
+    schema: "{% if target.type == 'bigquery' %}{{ target.schema }}_stg{% else %}{{ target.schema }}{% endif %}"
     tables:
       - name: listen_events
         columns:
