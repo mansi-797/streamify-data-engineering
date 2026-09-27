@@ -1,0 +1,12 @@
+streamify:
+  target: bigquery
+
+  outputs:
+    bigquery:
+      type: bigquery
+      method: oauth
+      project: <YOUR_GCP_PROJECT_ID>
+      dataset: streamify
+      threads: 4
+      location: US
+      priority: interactive
