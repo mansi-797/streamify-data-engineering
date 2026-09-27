@@ -58,17 +58,25 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- dbt-bigquery==1.0.0}
+    _PIP_ADDITIONAL_REQUIREMENTS: ''
     GOOGLE_APPLICATION_CREDENTIALS: /.google/credentials/google_credentials.json
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: 'google-cloud-platform://?extra__google_cloud_platform__key_path=/.google/credentials/google_credentials.json'
     GCP_PROJECT_ID: '${GCP_PROJECT_ID}'
     GCP_GCS_BUCKET: '${GCP_GCS_BUCKET}'
+
+    STREAMIFY_PG_HOST: 'host.docker.internal'
+    STREAMIFY_PG_PORT: '5433'
+    STREAMIFY_PG_USER: 'streamify'
+    STREAMIFY_PG_PASSWORD: '${STREAMIFY_PG_PASSWORD}'
+    STREAMIFY_PG_DB: 'streamify'
   
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ../dbt:/dbt
+    - ../scripts:/opt/airflow/scripts:ro
+    - ../streamify_data:/opt/airflow/streamify_data:ro
     - ~/.google/credentials/:/.google/credentials:ro
     - ~/.dbt:/home/airflow/.dbt:ro
   user: "${AIRFLOW_UID:-50000}:0"
@@ -177,20 +185,7 @@ services:
     command:
       - -c
       - |
-        function ver() {
-          printf "%04d%04d%04d%04d" $${1//./ }
-        }
-        airflow_version=$$(gosu airflow airflow version)
-        airflow_version_comparable=$$(ver $${airflow_version})
-        min_airflow_version=2.2.0
-        min_airflow_version_comparable=$$(ver $${min_airflow_version})
-        if (( airflow_version_comparable < min_airflow_version_comparable )); then
-          echo
-          echo -e "\033[1;31mERROR!!!: Too old Airflow version $${airflow_version}!\e[0m"
-          echo "The minimum Airflow version supported: $${min_airflow_version}. Only use this or higher!"
-          echo
-          exit 1
-        fi
+        # Airflow 2.11.2 is pinned by the Docker base image; no legacy version check needed.
         if [[ -z "${AIRFLOW_UID}" ]]; then
           echo
           echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
@@ -239,7 +234,7 @@ services:
     # yamllint enable rule:line-length
     environment:
       <<: *airflow-common-env
-      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
