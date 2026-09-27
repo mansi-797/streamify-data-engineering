@@ -42,6 +42,36 @@ CONFIG = {
         "key_columns": ["ts", "userid", "artist", "song"],
         "integer_columns": ["userid", "registration"],
     },
+    "auth": {
+        "source_path": "streamify_data/auth_events",
+        "target_table": "auth_events",
+        "source_columns": [
+            "ts", "sessionId", "level", "city", "state",
+            "userAgent", "lon", "lat", "userId", "lastName",
+            "firstName", "gender", "registration", "success"
+        ],
+        "db_columns": [
+            "ts", "sessionid", "level", "city", "state",
+            "useragent", "lon", "lat", "userid", "lastname",
+            "firstname", "gender", "registration", "success"
+        ],
+        "defaults": {
+            "level": "NA",
+            "city": "NA",
+            "state": "NA",
+            "useragent": "NA",
+            "lon": 0.0,
+            "lat": 0.0,
+            "userid": 0,
+            "lastname": "NA",
+            "firstname": "NA",
+            "gender": "NA",
+            "registration": 9999999999999,
+            "success": False,
+        },
+        "key_columns": ["ts", "sessionid"],
+        "integer_columns": ["sessionid", "userid", "registration"],
+    },
     "page": {
         "source_path": "streamify_data/page_view_events",
         "target_table": "page_view_events",
@@ -193,7 +223,7 @@ def main():
     )
     parser.add_argument(
         "event_type",
-        choices=["listen", "page"],
+        choices=["listen", "page", "auth"],
         help="Event dataset to load.",
     )
     args = parser.parse_args()
