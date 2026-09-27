@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: staging
-    schema: public
+    schema: "{{ target.schema }}"
     tables:
       - name: listen_events
         columns:
