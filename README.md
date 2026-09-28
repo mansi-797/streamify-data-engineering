@@ -1,140 +1,258 @@
-# Streamify — Real-Time Music Data Engineering Pipeline
+# 🎵 Streamify — Data Engineering & Analytics Pipeline
 
-Streamify is a data engineering project that simulates a music-streaming platform and processes user activity through a real-time data pipeline.
+Streamify is an end-to-end data engineering project that simulates a music-streaming platform and processes user activity through a streaming data pipeline.
 
-The project combines **Apache Kafka, Spark Structured Streaming, PostgreSQL, dbt, Airflow, Docker, and Terraform**, with an original cloud-oriented architecture using **Google Cloud Storage and BigQuery**.
+The project demonstrates how streaming events can be generated, ingested, processed, stored, transformed, and finally presented through an interactive analytics dashboard.
 
-> **Current local validation:** EventSim → Kafka → Spark Structured Streaming → Parquet → PostgreSQL → dbt has been successfully executed and verified locally.
+## 📌 Project Overview
 
-## Architecture
-
-### Verified Local Pipeline
+The locally validated implementation follows this flow:
 
 ```text
 EventSim
    ↓
-Kafka
+Apache Kafka
    ↓
 Spark Structured Streaming
    ↓
-Partitioned Parquet
+Partitioned Parquet Data
    ↓
 PostgreSQL
    ↓
 dbt
    ↓
 Analytical Data Models
-```
+   ↓
+Streamlit Dashboard
+# 🎵 Streamify — Data Engineering & Analytics Pipeline
 
-### Original Cloud Architecture
+Streamify is an end-to-end data engineering project that simulates a music-streaming platform and processes user activity through a streaming data pipeline.
+
+The project demonstrates how streaming events can be generated, ingested, processed, stored, transformed, and finally presented through an interactive analytics dashboard.
+
+## 📌 Project Overview
+
+The locally validated implementation follows this flow:
 
 ```text
 EventSim
    ↓
-Kafka
+Apache Kafka
    ↓
-Spark Streaming
+Spark Structured Streaming
    ↓
-Google Cloud Storage
+Partitioned Parquet Data
    ↓
-Airflow
-   ↓
-BigQuery
+PostgreSQL
    ↓
 dbt
    ↓
-Analytics Dashboard
-```
+Analytical Data Models
+   ↓
+Streamlit Dashboard
+🎯 Project Objective
 
-![Streamify Architecture](images/Streamify-Architecture.jpg)
+The main objective of Streamify is to build and demonstrate an end-to-end data pipeline capable of processing simulated music-streaming activity.
 
-## Project Objective
+The pipeline works with events such as:
 
-Streamify simulates activity from a fictional music-streaming platform.
+Song listening events
+Page-view events
+Authentication events
 
-The pipeline processes:
+The processed data is transformed into analytical models that can be queried and visualized through the Streamlit d🎯 Project Objective
 
-- Song listening events
-- Page-view events
-- Authentication events
+The main objective of Streamify is to build and demonstrate an end-to-end data pipeline capable of processing simulated music-streaming activity.
 
-The goal is to demonstrate an end-to-end data engineering workflow for ingesting, processing, storing, transforming, and analyzing streaming data.
+The pipeline works with events such as:
 
-## Technology Stack
+Song listening events
+Page-view events
+Authentication events
 
-| Layer | Technology |
-|---|---|
-| Event Generation | EventSim |
-| Message Streaming | Apache Kafka |
-| Stream Processing | Apache Spark Structured Streaming |
-| Data Lake Format | Apache Parquet |
-| Local Database | PostgreSQL |
-| Transformation | dbt |
-| Orchestration | Apache Airflow |
-| Containerization | Docker / Docker Compose |
-| Infrastructure as Code | Terraform |
-| Cloud Platform | Google Cloud Platform |
-| Programming Language | Python |
+The processed data is transformed into analytical models that can be queried and visualized through the Streamlit dashboard.
+🏗️ Architecture
+Local Implementation
+                    ┌──────────────┐
+                    │   EventSim   │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │    Kafka     │
+                    └──────┬───────┘
+                           │
+                           ▼
+              ┌────────────────────────┐
+              │ Spark Structured       │
+              │ Streaming              │
+              └───────────┬────────────┘
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │    Parquet    │
+                  │  Data Lake    │
+                  └───────┬───────┘
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │  PostgreSQL   │
+                  └───────┬───────┘
+                          │
+                          ▼
+                    ┌──────────┐
+                    │   dbt    │
+                    └────┬─────┘
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │ Analytical Models   │
+              └──────────┬──────────┘
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │ Streamlit Dashboard │
+              └─────────────────────┘
+📊 Analytics Dashboard
 
-## Data Pipeline
 
-### 1. Event Generation
+A custom Streamlit dashboard was added to visualize the analytical data generated by the pipeline.
 
-EventSim generates synthetic music-streaming activity.
+The dashboard connects to PostgreSQL and provides interactive filtering and analytics.
 
-### 2. Kafka
+![Streamify Analytics Dashboard](images/dashboard.png)
+Dashboard Features
+Total Streams
+Unique Users
+Unique Artists
+Unique Songs
+Streams over time
+Streams by user level
+Streams by gender
+Streams by state
+Most active artists
+Most streamed songs
+Interactive date filtering
+User-level filtering
+Gender filtering
+State and city filtering
 
-Events are published to:
+The dashboard uses the analytical fact_streams and dimension tables generated by the data pipeline.
 
-```text
-listen_events
-page_view_events
-auth_events
-```
 
-### 3. Spark Structured Streaming
+🛠️ Technology Stack
+Layer	Technology
+Event Generation	EventSim
+Message Streaming	Apache Kafka
+Stream Processing	Apache Spark Structured Streaming
+Storage Format	Apache Parquet
+Database	PostgreSQL
+Data Transformation	dbt
+Analytics Dashboard	Streamlit
+Data Visualization	Plotly
+Containerization	Docker / Docker Compose
+Orchestration	Apache Airflow
+Infrastructure as Code	Terraform
+Programming Language	Python
+📁 Project Structure
+streamify-main/
+│
+├── dashboard/
+│   ├── app.py
+│   └── requirements.txt
+│
+├── dbt/
+│   ├── models/
+│   ├── dbt_project.yml
+│   └── profiles.yml.example
+│
+├── airflow/
+│   └── docker-compose.yaml
+│
+├── kafka/
+│   └── docker-compose.yml
+│
+├── eventsim/
+│
+├── streamify_data/
+│
+├── images/
+│
+├── run_dashboard.sh
+│
+└── README.md
+🚀 Running the Dashboard Locally
 
-Spark consumes Kafka messages, parses the event schemas, converts timestamps, derives time attributes, and writes processed events as partitioned Parquet files.
+The project includes a startup script that simplifies launching the Streamify dashboard.
 
-The local output structure is:
+From WSL/Ubuntu:
+~/streamify-main/run_dashboard.sh
+The script:
 
-```text
-<event>/
-└── month=<M>/
-    └── day=<D>/
-        └── hour=<H>/
-```
+Starts the Streamify PostgreSQL container.
+Activates the dashboard Python environment.
+Launches the Streamlit application.
 
-The local streaming job uses a 120-second processing trigger.
+After starting the application, open:
+http://localhost:8501
+🗄️ Database Configuration
 
-### 4. PostgreSQL
+The local dashboard uses PostgreSQL.
 
-The processed Parquet datasets are loaded into PostgreSQL source tables:
+The application expects the following environment variable:
 
-```text
-listen_events
-page_view_events
-```
+STREAMIFY_PG_PASSWORD
 
-### 5. dbt
+Database credentials are kept outside the dashboard source code so that the password does not need to be committed to GitHub.
+🔄 Data Engineering Workflow
 
-dbt transforms the source data into an analytical dimensional model:
+The project demonstrates the following data engineering stages:
 
-```text
-dim_users
-dim_songs
-dim_artists
-dim_location
-dim_datetime
+1. Event Generation
+
+EventSim generates simulated activity from a music-streaming platform.
+
+2. Data Ingestion
+
+Apache Kafka is used to ingest streaming events.
+
+3. Stream Processing
+
+Spark Structured Streaming processes the incoming events.
+
+4. Data Storage
+
+Processed streaming data is stored in partitioned Parquet files.
+
+5. Database Layer
+
+PostgreSQL stores the data used for analytical processing.
+
+6. Transformation
+
+dbt transforms the raw data into analytical models.
+
+7. Analytics
+
+The resulting analytical tables are queried by the Streamlit dashboard.
+📈 Dashboard Data Model
+
+The dashboard uses the following analytical and dimension tables:
+
 fact_streams
-wide_streams
-```
+    │
+    ├── dim_users
+    ├── dim_artists
+    ├── dim_songs
+    ├── dim_location
+    └── dim_datetime
 
-## Local Validation
+These tables provide the information required for the dashboard's KPIs, filters, and visualizations.
 
-The local pipeline has been successfully executed through:
+🧪 Local Validation
 
-```text
+The local pipeline has been executed and validated through the following stages:
+
 EventSim
    ↓
 Kafka
@@ -146,147 +264,49 @@ Parquet
 PostgreSQL
    ↓
 dbt
-```
+   ↓
+Streamlit Dashboard
 
-During validation, the streaming layer generated:
+The Streamlit dashboard has been successfully launched locally and is accessible through:
 
-```text
-listen_events     → 248 records
-page_view_events  → 301 records
-auth_events       → 7 records
-```
+http://localhost:8501
+☁️ Original Cloud Architecture
 
-The `listen_events` and `page_view_events` datasets were loaded into PostgreSQL, followed by a successful dbt run:
+The original project also includes a cloud-oriented architecture involving:
 
-```text
-PASS = 7
-ERROR = 0
-```
+Google Cloud Storage
+BigQuery
+Airflow
+Terraform
 
-These are development validation figures, not production-scale metrics.
+These components are retained in the repository as part of the project's original architecture.
 
-## Data Model
+The local implementation described above is the environment currently used for development and validation.
 
-### Fact Table
+💡 What This Project Demonstrates
 
-`fact_streams`
+This project demonstrates practical concepts including:
 
-Contains stream-level analytical records linked to the dimension tables.
+Real-time data ingestion
+Event streaming
+Stream processing
+Data lake storage
+PostgreSQL data warehousing
+Data transformation with dbt
+Data pipeline orchestration
+Docker-based development
+Analytical data modeling
+Interactive data visualization
+👩‍💻 Project
 
-### Dimension Tables
+Streamify — Data Engineering & Analytics Pipeline
 
-| Model | Purpose |
-|---|---|
-| `dim_users` | User attributes |
-| `dim_songs` | Song metadata |
-| `dim_artists` | Artist metadata |
-| `dim_location` | Geographic information |
-| `dim_datetime` | Date and time attributes |
+Built and customized as a portfolio data engineering project with a local streaming pipeline and interactive analytics dashboard.
 
-### Analytical View
+### After you paste it
 
-`wide_streams` combines the fact table with the dimension tables to provide a dashboard-friendly analytical dataset.
+Your nano screen should now be filled with the README.
 
-## Repository Structure
+**Don't worry if the text looks long or wraps across the screen. That's normal.**
 
-```text
-streamify/
-├── airflow/                  # Airflow DAGs
-├── dbt/                      # dbt project and models
-├── eventsim/                 # Synthetic event generator
-├── kafka/                    # Kafka configuration
-├── spark_streaming/          # Spark streaming jobs
-├── terraform/                # Infrastructure as Code
-├── scripts/                  # Helper scripts
-├── setup/                    # Setup documentation
-├── images/                   # Project images
-├── load_listen_to_postgres.py
-├── load_page_to_postgres.py
-├── requirements.txt
-└── README.md
-```
-
-Generated runtime data, checkpoints, credentials, virtual environments, logs, and dbt build artifacts are excluded from version control.
-
-## Local Setup
-
-The local development environment uses:
-
-- WSL2 / Linux
-- Python
-- Docker
-- Apache Kafka
-- PostgreSQL
-- PySpark
-- dbt
-
-The repository also contains documentation and infrastructure definitions for the original GCP-based deployment.
-
-## dbt Configuration
-
-Local database credentials are intentionally excluded from Git.
-
-Create:
-
-```text
-dbt/profiles.yml
-```
-
-using:
-
-```text
-dbt/profiles.yml.example
-```
-
-and provide your own PostgreSQL connection details.
-
-## Dashboard
-
-The repository contains the original dashboard reference:
-
-![Dashboard](images/dashboard.png)
-
-A standalone deployable dashboard application is planned for the professional version.
-
-## Engineering Challenges Identified
-
-During local validation, two data-model edge cases were identified:
-
-1. Some `fact_streams` records do not have a matching `dim_songs` record.
-2. `dim_artists.artistKey` is not unique for all source records, which can multiply rows when building `wide_streams`.
-
-These are documented as part of the improvement phase.
-
-## Planned Improvements
-
-- Incremental data processing
-- Data quality tests
-- Improved dimensional modeling
-- Automated PostgreSQL loading
-- Airflow orchestration
-- Production-ready dashboard
-- Cloud deployment
-- CI/CD
-- Monitoring and observability
-- Improved documentation
-
-## Data Engineering Concepts Demonstrated
-
-- Event-driven data ingestion
-- Kafka streaming
-- Spark Structured Streaming
-- Partitioned Parquet data lakes
-- Batch data loading
-- PostgreSQL
-- Dimensional modeling
-- Fact and dimension tables
-- dbt transformations
-- Airflow orchestration
-- Docker
-- Infrastructure as Code with Terraform
-
-## Acknowledgements
-
-This project was developed while learning from the DataTalks.Club Data Engineering curriculum and related open-source resources.
-
-EventSim is used to generate synthetic music-streaming activity.
+Once the whole thing is pasted, tell me **"pasted"**. Then I'll tell you exactly how to save it.
