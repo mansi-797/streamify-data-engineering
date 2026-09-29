@@ -22,6 +22,8 @@ dbt
 Analytical Data Models
    ↓
 Streamlit Dashboard
+```
+
 ## 🎯 Project Objective
 
 This project demonstrates an end-to-end data engineering workflow involving:
@@ -70,7 +72,7 @@ City filtering
 | GCP            | Cloud infrastructure                        |
 
 ## 📁 Project Structure
-'''text
+```text
 streamify-main/
 │
 ├── dashboard/
@@ -100,5 +102,5 @@ streamify-main/
 ```bash
 git clone https://github.com/mansi-797/streamify-data-engineering.git
 cd streamify-data-engineering
-''''
+```
 
