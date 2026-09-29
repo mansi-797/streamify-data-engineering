@@ -5,6 +5,8 @@ import plotly.express as px
 import psycopg2
 import streamlit as st
 
+from ai.agent import run_agent
+
 
 st.set_page_config(
     page_title="Streamify Analytics",
@@ -27,10 +29,6 @@ def load_stream_data():
     query = """
         SELECT
             f.ts,
-            f.userkey,
-            f.artistkey,
-            f.songkey,
-            f.locationkey,
             u.userid,
             u.firstname,
             u.lastname,
@@ -40,23 +38,19 @@ def load_stream_data():
             s.title AS song,
             l.city,
             l.statename,
-            d.date,
-            d.dayofweek,
-            d.month,
-            d.year,
-            d.weekendflag
+            d.date
         FROM fact_streams f
-        LEFT JOIN dim_users u
+        JOIN dim_users u
             ON f.userkey = u.userkey
-        LEFT JOIN dim_artists a
+        JOIN dim_artists a
             ON f.artistkey = a.artistkey
-        LEFT JOIN dim_songs s
+        JOIN dim_songs s
             ON f.songkey = s.songkey
-        LEFT JOIN dim_location l
+        JOIN dim_location l
             ON f.locationkey = l.locationkey
-        LEFT JOIN dim_datetime d
+        JOIN dim_datetime d
             ON f.datekey = d.datekey
-        ORDER BY f.ts
+        ORDER BY f.ts;
     """
 
     conn = psycopg2.connect(**DB_CONFIG)
@@ -67,26 +61,25 @@ def load_stream_data():
         conn.close()
 
     df["ts"] = pd.to_datetime(df["ts"])
+    df["date"] = pd.to_datetime(df["date"])
+
     return df
 
 
 def main():
-    st.title("🎵 Streamify Analytics")
-    st.caption("Interactive analytics built from the Streamify dbt analytical layer.")
 
-    if not DB_CONFIG["password"]:
-        st.error("STREAMIFY_PG_PASSWORD is not set.")
-        st.stop()
+    st.title("🎵 Streamify Analytics")
+
+    st.caption(
+        "Interactive analytics dashboard for the Streamify data engineering pipeline."
+    )
 
     try:
         df = load_stream_data()
-    except Exception as exc:
-        st.error("Could not connect to the Streamify PostgreSQL database.")
-        st.exception(exc)
-        st.stop()
 
-    if df.empty:
-        st.warning("No stream data is currently available.")
+    except Exception as exc:
+        st.error("Unable to load Streamify data from PostgreSQL.")
+        st.exception(exc)
         st.stop()
 
     # -------------------------
@@ -94,8 +87,8 @@ def main():
     # -------------------------
     st.sidebar.header("Filters")
 
-    min_date = df["ts"].min().date()
-    max_date = df["ts"].max().date()
+    min_date = df["date"].min().date()
+    max_date = df["date"].max().date()
 
     selected_dates = st.sidebar.date_input(
         "Date range",
@@ -106,80 +99,337 @@ def main():
 
     if isinstance(selected_dates, tuple) and len(selected_dates) == 2:
         start_date, end_date = selected_dates
-        filtered_df = df[
-            (df["ts"].dt.date >= start_date)
-            & (df["ts"].dt.date <= end_date)
-        ].copy()
     else:
-        filtered_df = df.copy()
+        start_date = selected_dates
+        end_date = selected_dates
 
     levels = sorted(df["level"].dropna().unique().tolist())
+
     selected_levels = st.sidebar.multiselect(
         "User level",
-        levels,
+        options=levels,
         default=levels,
     )
 
     genders = sorted(df["gender"].dropna().unique().tolist())
+
     selected_genders = st.sidebar.multiselect(
         "Gender",
-        genders,
+        options=genders,
         default=genders,
     )
 
     states = sorted(df["statename"].dropna().unique().tolist())
+
     selected_states = st.sidebar.multiselect(
         "State",
-        states,
+        options=states,
         default=states,
     )
 
     cities = sorted(df["city"].dropna().unique().tolist())
+
     selected_cities = st.sidebar.multiselect(
         "City",
-        cities,
+        options=cities,
         default=cities,
     )
 
-    if selected_levels:
-        filtered_df = filtered_df[
-            filtered_df["level"].isin(selected_levels)
-        ]
-
-    if selected_genders:
-        filtered_df = filtered_df[
-            filtered_df["gender"].isin(selected_genders)
-        ]
-
-    if selected_states:
-        filtered_df = filtered_df[
-            filtered_df["statename"].isin(selected_states)
-        ]
-
-    if selected_cities:
-        filtered_df = filtered_df[
-            filtered_df["city"].isin(selected_cities)
-        ]
+    # -------------------------
+    # Apply filters
+    # -------------------------
+    filtered_df = df[
+        (df["date"].dt.date >= start_date)
+        & (df["date"].dt.date <= end_date)
+        & (df["level"].isin(selected_levels))
+        & (df["gender"].isin(selected_genders))
+        & (df["statename"].isin(selected_states))
+        & (df["city"].isin(selected_cities))
+    ].copy()
 
     # -------------------------
-    # KPI cards
+    # KPI calculations
     # -------------------------
     total_streams = len(filtered_df)
-    unique_users = filtered_df["userkey"].nunique()
-    unique_artists = filtered_df["artistkey"].nunique()
-    unique_songs = filtered_df["songkey"].nunique()
+
+    unique_users = filtered_df["userid"].nunique()
+
+    unique_artists = filtered_df["artist"].nunique()
+
+    unique_songs = filtered_df["song"].nunique()
 
     col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric("Total Streams", f"{total_streams:,}")
-    col2.metric("Unique Users", f"{unique_users:,}")
-    col3.metric("Unique Artists", f"{unique_artists:,}")
-    col4.metric("Unique Songs", f"{unique_songs:,}")
+    col1.metric(
+        "Total Streams",
+        f"{total_streams:,}",
+    )
+
+    col2.metric(
+        "Unique Users",
+        f"{unique_users:,}",
+    )
+
+    col3.metric(
+        "Unique Artists",
+        f"{unique_artists:,}",
+    )
+
+    col4.metric(
+        "Unique Songs",
+        f"{unique_songs:,}",
+    )
+
+    st.divider()
+
+    # -------------------------
+    # Hourly Stream Spike Analysis
+    # -------------------------
+    from ai.tools import analyze_hourly_stream_spikes
+
+    st.divider()
+
+    st.subheader("📈 Hourly Stream Spike Analysis")
+
+    st.caption(
+        "Identifies unusually high hourly streaming activity using a z-score threshold."
+    )
+
+    spike_results = analyze_hourly_stream_spikes()
+
+    if spike_results:
+
+        average_streams = spike_results[0]["average_streams"]
+
+        highest_hour = max(
+            spike_results,
+            key=lambda row: row["streams"],
+        )
+
+        detected_spikes = [
+            row
+            for row in spike_results
+            if row["is_spike"]
+        ]
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric(
+            "Average hourly streams",
+            f"{average_streams:.2f}",
+        )
+
+        col2.metric(
+            "Highest hourly streams",
+            highest_hour["streams"],
+        )
+
+        col3.metric(
+            "Detected spikes",
+            len(detected_spikes),
+        )
+
+        if detected_spikes:
+
+            st.markdown("### 🔎 Detected Activity Spikes")
+
+            spike_df = pd.DataFrame(detected_spikes)
+
+            spike_df = spike_df[
+                [
+                    "hour",
+                    "streams",
+                    "average_streams",
+                    "z_score",
+                ]
+            ].rename(
+                columns={
+                    "hour": "Hour",
+                    "streams": "Streams",
+                    "average_streams": "Average",
+                    "z_score": "Z-Score",
+                }
+            )
+
+            st.dataframe(
+                spike_df,
+                hide_index=True,
+                width="stretch",
+            )
+
+            st.info(
+                "A spike is flagged when hourly stream activity reaches "
+                "a z-score of 2 or higher. This identifies statistical "
+                "spikes in the available dataset and does not establish "
+                "a cause for the increased activity."
+            )
+
+        else:
+
+            st.info(
+                "No hourly stream spikes were detected in the available data."
+            )
+    # -------------------------
+    # AI Analytics Assistant
+    # -------------------------
+    st.subheader("🤖 AI Analytics Assistant")
+
+    st.caption(
+        "Ask questions about your Streamify data using natural language."
+    )
+
+    question = st.text_input(
+        "Ask Streamify AI",
+        placeholder="Example: Where are most of our streams coming from?",
+    )
+
+    if st.button("Analyze", type="primary"):
+
+        if not question.strip():
+
+            st.warning("Please enter a question.")
+
+        else:
+
+            with st.spinner("Analyzing Streamify data..."):
+
+                try:
+
+                    answer = run_agent(question)
+
+                    question_lower = question.lower()
+
+                    # --------------------------------
+                    # Investigation Trace
+                    # --------------------------------
+                    is_state_level_question = (
+                        (
+                            "state" in question_lower
+                            or "states" in question_lower
+                            or "where" in question_lower
+                            or "location" in question_lower
+                        )
+                        and (
+                            "paid" in question_lower
+                            or "free" in question_lower
+                            or "user level" in question_lower
+                            or "user levels" in question_lower
+                        )
+                    )
+
+                    if is_state_level_question:
+
+                        from ai.tools import (
+                            get_streams_by_state,
+                            analyze_state_user_levels,
+                        )
+
+                        # Step 1:
+                        # Retrieve overall streaming activity by state.
+                        state_data = get_streams_by_state()
+
+                        # Step 2:
+                        # Compare paid and free streaming activity.
+                        level_analysis = analyze_state_user_levels()
+
+                        st.markdown("### 🔎 Investigation Trace")
+
+                        st.write(
+                            "1. Retrieved streaming activity by state."
+                        )
+
+                        st.write(
+                            "2. Compared paid and free streaming activity across states."
+                        )
+
+                        st.write(
+                            "3. Generated the answer from verified database results."
+                        )
+
+                        # --------------------------------
+                        # Verified Evidence
+                        # --------------------------------
+                        st.markdown("### 📋 Verified Evidence")
+
+                        st.caption(
+                            "Evidence retrieved directly from the Streamify PostgreSQL database."
+                        )
+
+                        evidence_df = pd.DataFrame(
+                            state_data[:5]
+                        )
+
+                        evidence_df = evidence_df.rename(
+                            columns={
+                                "state": "State",
+                                "stream_count": "Streams",
+                            }
+                        )
+
+                        st.dataframe(
+                            evidence_df,
+                            hide_index=True,
+                            width="stretch",
+                        )
+
+                        paid_count = sum(
+                            1
+                            for row in level_analysis
+                            if row["higher_streaming_level"] == "paid"
+                        )
+
+                        free_count = sum(
+                            1
+                            for row in level_analysis
+                            if row["higher_streaming_level"] == "free"
+                        )
+
+                        equal_count = sum(
+                            1
+                            for row in level_analysis
+                            if row["higher_streaming_level"] == "equal"
+                        )
+
+                        col1, col2, col3 = st.columns(3)
+
+                        col1.metric(
+                            "Paid higher",
+                            paid_count,
+                        )
+
+                        col2.metric(
+                            "Free higher",
+                            free_count,
+                        )
+
+                        col3.metric(
+                            "Equal",
+                            equal_count,
+                        )
+
+                    # --------------------------------
+                    # Final Answer
+                    # --------------------------------
+                    st.markdown("### 💡 AI Insight")
+
+                    st.write(answer)
+
+                except Exception as exc:
+
+                    st.error(
+                        "The AI analytics assistant could not process the question."
+                    )
+
+                    st.exception(exc)
 
     st.divider()
 
     if filtered_df.empty:
-        st.warning("No data matches the selected filters.")
+
+        st.warning(
+            "No data matches the selected filters."
+        )
+
         st.stop()
 
     # -------------------------
@@ -195,181 +445,238 @@ def main():
         .reset_index(name="streams")
     )
 
-    time_fig = px.line(
+    fig = px.line(
         hourly,
         x="ts",
         y="streams",
+        title="Streams Over Time",
         markers=True,
-        labels={
-            "ts": "Time",
-            "streams": "Streams",
-        },
     )
 
-    time_fig.update_layout(
-        margin=dict(l=20, r=20, t=20, b=20),
-        height=400,
+    fig.update_layout(
+        xaxis_title="Time",
+        yaxis_title="Streams",
     )
 
-    st.plotly_chart(time_fig, use_container_width=True)
+    st.plotly_chart(
+        fig,
+        width="stretch",
+    )
 
     # -------------------------
-    # User analysis
+    # User level
     # -------------------------
-    col1, col2 = st.columns(2)
+    st.subheader("Streams by User Level")
 
-    with col1:
-        st.subheader("Streams by User Level")
+    level_counts = (
+        filtered_df["level"]
+        .value_counts()
+        .reset_index()
+    )
 
-        level_df = (
-            filtered_df
-            .groupby("level")
-            .size()
-            .reset_index(name="streams")
-            .sort_values("streams", ascending=False)
-        )
+    level_counts.columns = [
+        "level",
+        "streams",
+    ]
 
-        level_fig = px.bar(
-            level_df,
-            x="level",
-            y="streams",
-            text="streams",
-            labels={
-                "level": "User Level",
-                "streams": "Streams",
-            },
-        )
+    fig = px.bar(
+        level_counts,
+        x="level",
+        y="streams",
+        title="Streams by User Level",
+    )
 
-        st.plotly_chart(level_fig, use_container_width=True)
-
-    with col2:
-        st.subheader("Streams by Gender")
-
-        gender_df = (
-            filtered_df
-            .groupby("gender")
-            .size()
-            .reset_index(name="streams")
-            .sort_values("streams", ascending=False)
-        )
-
-        gender_fig = px.bar(
-            gender_df,
-            x="gender",
-            y="streams",
-            text="streams",
-            labels={
-                "gender": "Gender",
-                "streams": "Streams",
-            },
-        )
-
-        st.plotly_chart(gender_fig, use_container_width=True)
+    st.plotly_chart(
+        fig,
+        width="stretch",
+    )
 
     # -------------------------
-    # Geographic analysis
+    # Gender
+    # -------------------------
+    st.subheader("Streams by Gender")
+
+    gender_counts = (
+        filtered_df["gender"]
+        .value_counts()
+        .reset_index()
+    )
+
+    gender_counts.columns = [
+        "gender",
+        "streams",
+    ]
+
+    fig = px.bar(
+        gender_counts,
+        x="gender",
+        y="streams",
+        title="Streams by Gender",
+    )
+
+    st.plotly_chart(
+        fig,
+        width="stretch",
+    )
+
+    # -------------------------
+    # State
     # -------------------------
     st.subheader("Streams by State")
 
-    state_df = (
-        filtered_df
-        .groupby("statename")
-        .size()
-        .reset_index(name="streams")
-        .sort_values("streams", ascending=False)
+    state_counts = (
+        filtered_df["statename"]
+        .value_counts()
         .head(10)
+        .reset_index()
     )
 
-    state_fig = px.bar(
-        state_df,
+    state_counts.columns = [
+        "state",
+        "streams",
+    ]
+
+    fig = px.bar(
+        state_counts,
         x="streams",
-        y="statename",
+        y="state",
         orientation="h",
-        text="streams",
-        labels={
-            "statename": "State",
-            "streams": "Streams",
-        },
+        title="Top 10 States by Streams",
     )
 
-    state_fig.update_layout(
-        yaxis={"categoryorder": "total ascending"},
-        height=450,
+    st.plotly_chart(
+        fig,
+        width="stretch",
     )
 
-    st.plotly_chart(state_fig, use_container_width=True)
+    # -------------------------
+    # Artists
+    # -------------------------
+    st.subheader("Most Active Artists")
+
+    artist_counts = (
+        filtered_df["artist"]
+        .value_counts()
+        .head(10)
+        .reset_index()
+    )
+
+    artist_counts.columns = [
+        "artist",
+        "streams",
+    ]
+
+    fig = px.bar(
+        artist_counts,
+        x="streams",
+        y="artist",
+        orientation="h",
+        title="Top 10 Artists by Streams",
+    )
+
+    st.plotly_chart(
+        fig,
+        width="stretch",
+    )
 
     # -------------------------
-    # Artists and songs
+    # Songs
     # -------------------------
-    col1, col2 = st.columns(2)
+    st.subheader("Most Streamed Songs")
 
-    with col1:
-        st.subheader("Most Active Artists")
+    song_counts = (
+        filtered_df["song"]
+        .value_counts()
+        .head(10)
+        .reset_index()
+    )
 
-        artist_df = (
-            filtered_df
-            .groupby("artist")
-            .size()
-            .reset_index(name="streams")
-            .sort_values("streams", ascending=False)
-            .head(10)
-        )
+    song_counts.columns = [
+        "song",
+        "streams",
+    ]
 
-        artist_fig = px.bar(
-            artist_df,
-            x="streams",
-            y="artist",
-            orientation="h",
-            text="streams",
-            labels={
-                "artist": "Artist",
-                "streams": "Streams",
-            },
-        )
+    fig = px.bar(
+        song_counts,
+        x="streams",
+        y="song",
+        orientation="h",
+        title="Top 10 Songs by Streams",
+    )
 
-        artist_fig.update_layout(
-            yaxis={"categoryorder": "total ascending"},
-            height=450,
-        )
+    st.plotly_chart(
+        fig,
+        width="stretch",
+    )
 
-        st.plotly_chart(artist_fig, use_container_width=True)
+    # -------------------------
+    # Data Engineering Pipeline
+    # -------------------------
+    st.divider()
 
-    with col2:
-        st.subheader("Most Streamed Songs")
+    st.subheader("🔄 Streamify Data Engineering Pipeline")
 
-        song_df = (
-            filtered_df
-            .groupby("song")
-            .size()
-            .reset_index(name="streams")
-            .sort_values("streams", ascending=False)
-            .head(10)
-        )
+    st.caption(
+        "End-to-end flow from event generation to analytical insights."
+    )
 
-        song_fig = px.bar(
-            song_df,
-            x="streams",
-            y="song",
-            orientation="h",
-            text="streams",
-            labels={
-                "song": "Song",
-                "streams": "Streams",
-            },
-        )
+    pipeline = [
+        (
+            "🎵 Eventsim",
+            "Generates simulated music streaming events",
+        ),
+        (
+            "📨 Kafka",
+            "Ingests streaming events",
+        ),
+        (
+            "⚡ Spark",
+            "Processes streaming data",
+        ),
+        (
+            "🗄️ Data Lake",
+            "Stores processed event data",
+        ),
+        (
+            "🐘 PostgreSQL",
+            "Stores structured analytical data",
+        ),
+        (
+            "🔧 dbt",
+            "Transforms data into analytics-ready models",
+        ),
+        (
+            "📊 Streamlit",
+            "Presents interactive analytics",
+        ),
+    ]
 
-        song_fig.update_layout(
-            yaxis={"categoryorder": "total ascending"},
-            height=450,
-        )
+    pipeline_cols = st.columns(
+        len(pipeline)
+    )
 
-        st.plotly_chart(song_fig, use_container_width=True)
+    for col, (stage, description) in zip(
+        pipeline_cols,
+        pipeline,
+    ):
+
+        with col:
+
+            st.markdown(
+                f"### {stage}"
+            )
+
+            st.caption(
+                description
+            )
 
     # -------------------------
     # Data details
     # -------------------------
-    with st.expander("View filtered stream data"):
+    with st.expander(
+        "View filtered stream data"
+    ):
+
         display_columns = [
             "ts",
             "userid",
@@ -385,7 +692,7 @@ def main():
 
         st.dataframe(
             filtered_df[display_columns],
-            use_container_width=True,
+            width="stretch",
         )
 
 
